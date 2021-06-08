@@ -4,6 +4,8 @@ Gets the list of Mullvad servers with the best latency according to `ping`.
 To use either download the Linux executable or run using Deno
 `deno run --allow-net --allow-run script.ts`.
 
+To generate an executable run `deno compile --allow-net --allow-run -o mullvad-ping script.ts`.
+
 ## Usage
 
 ```

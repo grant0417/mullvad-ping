@@ -26,10 +26,16 @@ if (args.help == true) {
     --country <code>    the country you want to quary (eg. us, gb, de)
     --list-countries    lists the avaiable countries
     --type <type>       the type of server to quary (${serverTypes.join(", ")})
-    --count <n>         the number of pings to the server (default 3)
-    --interval <i>      the interval between pings in seconds (default/min 0.2)
-    --top <n>           the number of top servers to show, (0=all)
-    --help              usage infromation`);
+    --count <n>         the number of pings to the server (default 3)`);
+  if (Deno.build.os != "windows") {
+    console.log(
+      `    --interval <i>      the interval between pings in seconds (default/min 0.2)`,
+    );
+  }
+  console.log(
+    `    --top <n>           the number of top servers to show, (0=all)
+    --help              usage infromation`,
+  );
   Deno.exit(0);
 }
 
@@ -69,43 +75,79 @@ if (args["list-countries"]) {
     if (
       (country == null || country == server.country_code)
     ) {
-      const p = Deno.run({
-        cmd: [
+      let cmd = [];
+      if (Deno.build.os == "windows") {
+        cmd = [
+          "ping",
+          "-n",
+          count.toString(),
+          server.ipv4_addr_in,
+        ];
+      } else {
+        cmd = [
           "ping",
           "-c",
           count.toString(),
           "-i",
           interval.toString(),
           server.ipv4_addr_in,
-        ],
+        ];
+      }
+
+      const p = Deno.run({
+        cmd,
         stdout: "piped",
       });
 
       const output = new TextDecoder().decode(await p.output());
 
-      // [all, min, avg, max, mdev]
-      const regex =
-        /(?<min>\d+(?:.\d+)?)\/(?<avg>\d+(?:.\d+)?)\/(?<max>\d+(?:.\d+)?)\/(?<mdev>\d+(?:.\d+)?)/;
+      if (Deno.build.os == "windows") {
+        // [all, min, avg, max, mdev]
+        const regex = /Average = (\d*)ms/
+        const avg = output.match(regex);
+        if (avg) {
+          console.log(
+            `Pinged ${server.hostname}.mullvad.net, avg ${
+              avg[1]
+            }ms`,
+          );
 
-      const values = output.match(regex);
-      if (values) {
-        console.log(
-          `Pinged ${server.hostname}.mullvad.net, min/avg/max/mdev ${
-            values[0]
-          }`,
-        );
+          results.push({
+            hostname: server.hostname,
+            city: server.city_name,
+            country: server.country_name,
+            type: server.type,
+            ip: server.ipv4_addr_in,
+            avg: parseFloat(avg[1]) || 0,
+          });
+        }
 
-        results.push({
-          hostname: server.hostname,
-          city: server.city_name,
-          country: server.country_name,
-          type: server.type,
-          ip: server.ipv4_addr_in,
-          avg: parseFloat(values[2]) || 0,
-        });
+        await sleep(200);
+      } else {
+        // [all, min, avg, max, mdev]
+        const regex =
+          /(?<min>\d+(?:.\d+)?)\/(?<avg>\d+(?:.\d+)?)\/(?<max>\d+(?:.\d+)?)\/(?<mdev>\d+(?:.\d+)?)/;
+
+        const values = output.match(regex);
+        if (values) {
+          console.log(
+            `Pinged ${server.hostname}.mullvad.net, min/avg/max/mdev ${
+              values[0]
+            }`,
+          );
+
+          results.push({
+            hostname: server.hostname,
+            city: server.city_name,
+            country: server.country_name,
+            type: server.type,
+            ip: server.ipv4_addr_in,
+            avg: parseFloat(values[2]) || 0,
+          });
+        }
+
+        await sleep(interval * 1000);
       }
-
-      await sleep(interval * 1000);
     }
   }
 
@@ -125,7 +167,7 @@ if (args["list-countries"]) {
         }ms) ${e.type} ${e.city}, ${e.country}`,
       );
     }
-    console.table()
+    console.table();
   } else {
     console.error("No servers found");
   }

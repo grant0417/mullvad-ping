@@ -1,2 +1,3 @@
 /.vscode
-mullvad-ping
+mullvad-ping*
+Makefile

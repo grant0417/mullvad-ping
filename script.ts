@@ -23,9 +23,9 @@ const serverTypes = ["openvpn", "bridge", "wireguard", "all"];
 const args = parse(Deno.args);
 if (args.help == true) {
   console.log(`Usage: script [OPTION]
-    --country <code>    the country you want to quary (eg. us, gb, de)
-    --list-countries    lists the avaiable countries
-    --type <type>       the type of server to quary (${serverTypes.join(", ")})
+    --country <code>    the country you want to query (eg. us, gb, de)
+    --list-countries    lists the available countries
+    --type <type>       the type of server to query (${serverTypes.join(", ")})
     --count <n>         the number of pings to the server (default 3)`);
   if (Deno.build.os != "windows") {
     console.log(
@@ -34,7 +34,7 @@ if (args.help == true) {
   }
   console.log(
     `    --top <n>           the number of top servers to show, (0=all)
-    --help              usage infromation`,
+    --help              usage information`,
   );
   Deno.exit(0);
 }

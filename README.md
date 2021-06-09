@@ -12,11 +12,11 @@ Mac so the times are less precice and the script will take ~5x longer.
 
 ```
 Usage: script [OPTION]
-    --country <code>    the country you want to quary (eg. us, gb, de)
-    --list-countries    lists the avaiable countries
-    --type <type>       the type of server to quary (openvpn, bridge, wireguard, all)
+    --country <code>    the country you want to query (eg. us, gb, de)
+    --list-countries    lists the available countries
+    --type <type>       the type of server to query (openvpn, bridge, wireguard, all)
     --count <n>         the number of pings to the server (default 3)
     --interval <i>      the interval between pings in seconds (default/min 0.2)
     --top <n>           the number of top servers to show, (0=all)
-    --help              usage infromation
+    --help              usage information
 ```

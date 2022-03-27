@@ -11,6 +11,9 @@ jobs:
     steps:
       - name: Git Checkout 
         uses: actions/checkout@v2
+      - uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
       - name: Compile Linux
         uses: deno compile --allow-net --allow-run --target x86_64-unknown-linux-gnu -o mullvad-ping-linux script.ts
       - name: Compile Windows

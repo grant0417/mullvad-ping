@@ -12,6 +12,9 @@ jobs:
     steps:
       - name: Git Checkout
         uses: actions/checkout@v2
+      - uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
       - name: Lint Deno Module
         run: deno fmt --check
       - name: Test Deno Module

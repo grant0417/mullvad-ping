@@ -1,0 +1,29 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git Checkout 
+        uses: actions/checkout@v2
+      - name: Compile Linux
+        uses: deno compile --allow-net --allow-run --target x86_64-unknown-linux-gnu -o mullvad-ping-linux script.ts
+      - name: Compile Windows
+        uses: deno compile --allow-net --allow-run --target x86_64-pc-windows-msvc -o mullvad-ping-windows.exe script.ts
+      - name: Compile Apple Intel
+        uses: deno compile --allow-net --allow-run --target x86_64-apple-darwin -o mullvad-ping-macos-intel script.ts
+      - name: Compile Apple Arm
+        uses: deno compile --allow-net --allow-run --target aarch64-apple-darwin -o mullvad-ping-macos-arm script.ts
+      - name: Release
+        uses: softprops/action-gh-release@v1
+          with:
+            files: |
+              mullvad-ping-linux
+              mullvad-ping-windows.exe
+              mullvad-ping-macos-intel
+              mullvad-ping-macos-arm

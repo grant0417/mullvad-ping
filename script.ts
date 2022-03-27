@@ -1,16 +1,17 @@
-import { parse } from "https://deno.land/std/flags/mod.ts";
+import { parse } from "https://deno.land/std@0.132.0/flags/mod.ts";
 
 type ServerDataJSON = {
   hostname: string;
-  "country_code": string;
-  "country_name": string;
-  "city_code": string;
-  "city_name": string;
+  country_code: string;
+  country_name: string;
+  city_code: string;
+  city_name: string;
   active: boolean;
   owned: boolean;
   provider: string;
-  "ipv4_addr_in": string;
-  "ipv6_addr_in": string;
+  ipv4_addr_in: string;
+  ipv6_addr_in: string;
+  network_port_speed: number;
   type: string;
 };
 
@@ -34,6 +35,7 @@ if (args.help == true) {
   }
   console.log(
     `    --top <n>           the number of top servers to show, (0=all)
+    --port-speed <n>    only show servers with at least n Gigabit port speed             
     --help              usage information`,
   );
   Deno.exit(0);
@@ -53,6 +55,7 @@ if (interval < 0.2) {
 }
 const count = parseInt(args.count ?? 5) || 5;
 const topN = parseInt(args.top ?? 5) || 5;
+const portSpeed = parseInt(args["port-speed"] ?? 0) || 0;
 
 console.log("Fetching currently avaiable relays...");
 const response = await fetch(
@@ -73,16 +76,12 @@ if (args["list-countries"]) {
 
   for (const server of json) {
     if (
-      (country == null || country == server.country_code)
+      (country == null || country == server.country_code) &&
+      server.network_port_speed >= portSpeed
     ) {
       let cmd = [];
       if (Deno.build.os == "windows") {
-        cmd = [
-          "ping",
-          "-n",
-          count.toString(),
-          server.ipv4_addr_in,
-        ];
+        cmd = ["ping", "-n", count.toString(), server.ipv4_addr_in];
       } else {
         cmd = [
           "ping",
@@ -103,14 +102,10 @@ if (args["list-countries"]) {
 
       if (Deno.build.os == "windows") {
         // [all, min, avg, max, mdev]
-        const regex = /Average = (\d*)ms/
+        const regex = /Average = (\d*)ms/;
         const avg = output.match(regex);
         if (avg) {
-          console.log(
-            `Pinged ${server.hostname}.mullvad.net, avg ${
-              avg[1]
-            }ms`,
-          );
+          console.log(`Pinged ${server.hostname}.mullvad.net, avg ${avg[1]}ms`);
 
           results.push({
             hostname: server.hostname,
@@ -119,6 +114,7 @@ if (args["list-countries"]) {
             type: server.type,
             ip: server.ipv4_addr_in,
             avg: parseFloat(avg[1]) || 0,
+            network_port_speed: server.network_port_speed,
           });
         }
 
@@ -143,6 +139,7 @@ if (args["list-countries"]) {
             type: server.type,
             ip: server.ipv4_addr_in,
             avg: parseFloat(values[2]) || 0,
+            network_port_speed: server.network_port_speed,
           });
         }
 
@@ -164,7 +161,7 @@ if (args["list-countries"]) {
       console.log(
         ` - ${e.hostname}.mullvad.net (${
           e.avg.toFixed(1)
-        }ms) ${e.type} ${e.city}, ${e.country}`,
+        }ms) ${e.network_port_speed} Gigabit ${e.type} ${e.city}, ${e.country}`,
       );
     }
     console.table();

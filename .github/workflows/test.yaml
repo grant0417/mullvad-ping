@@ -1,0 +1,18 @@
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v2
+      - name: Lint Deno Module
+        run: deno fmt --check
+      - name: Test Deno Module
+        run: deno lint

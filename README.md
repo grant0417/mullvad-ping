@@ -1,9 +1,18 @@
 # Mullvad Ping
 
-Gets the list of Mullvad servers with the best latency according to `ping`. To
-use either download the executable or run using Deno
-`deno run --allow-net --allow-run script.ts`. To generate an executable run
-`deno compile --allow-net --allow-run -o mullvad-ping script.ts`.
+Gets the list of Mullvad servers with the best latency according to `ping`. 
+
+Run 
+
+```bash
+deno run --allow-net --allow-run https://raw.githubusercontent.com/grant0417/mullvad-ping/main/script.ts
+```
+
+Build Exe
+
+```
+deno compile --allow-net --allow-run -o mullvad-ping https://raw.githubusercontent.com/grant0417/mullvad-ping/main/script.ts
+```
 
 Note: The Windows version of `ping` is somewhat more limited than that of Linux
 or Mac so the times are less precice and the script will take ~5x longer.

@@ -12,6 +12,7 @@ type ServerDataJSON = {
   ipv4_addr_in: string;
   ipv6_addr_in: string;
   network_port_speed: number;
+  stboot: boolean;
   type: string;
 };
 
@@ -19,7 +20,19 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function checkRunMode(stboot: boolean, runMode: string) {
+  if (runMode == "all") {
+    return true;
+  } else if (runMode == "ram" && stboot == true) {
+    return true;
+  } else if (runMode == "disk" && stboot == false) {
+    return true;
+  }
+  return false;
+}
+
 const serverTypes = ["openvpn", "bridge", "wireguard", "all"];
+const runTypes = ["all", "ram", "disk"];
 
 const args = parse(Deno.args);
 if (args.help == true) {
@@ -35,7 +48,8 @@ if (args.help == true) {
   }
   console.log(
     `    --top <n>           the number of top servers to show, (0=all)
-    --port-speed <n>    only show servers with at least n Gigabit port speed             
+    --port-speed <n>    only show servers with at least n Gigabit port speed
+    --run-mode <type>   only show servers running from (${runTypes.join(", ")})
     --help              usage information`,
   );
   Deno.exit(0);
@@ -57,6 +71,12 @@ const count = parseInt(args.count ?? 5) || 5;
 const topN = parseInt(args.top ?? 5) || 5;
 const portSpeed = parseInt(args["port-speed"] ?? 0) || 0;
 
+const runMode = args["run-mode"] ?? "all";
+if (!runTypes.includes(runMode)) {
+  console.error(`Invalid run-mode, allowed types are: ${runTypes.join(", ")}`);
+  Deno.exit(1);
+}
+
 console.log("Fetching currently avaiable relays...");
 const response = await fetch(
   `https://api.mullvad.net/www/relays/${serverType}/`,
@@ -77,7 +97,8 @@ if (args["list-countries"]) {
   for (const server of json) {
     if (
       (country == null || country == server.country_code) &&
-      server.network_port_speed >= portSpeed
+      (server.network_port_speed >= portSpeed) &&
+      checkRunMode(server.stboot, runMode)
     ) {
       let cmd = [];
       if (Deno.build.os == "windows") {

@@ -27,6 +27,7 @@ Usage: script [OPTION]
     --count <n>         the number of pings to the server (default 3)
     --interval <i>      the interval between pings in seconds (default/min 0.2)
     --top <n>           the number of top servers to show, (0=all)
-    --port-speed <n>    only show servers with at least n Gigabit port speed             
+    --port-speed <n>    only show servers with at least n Gigabit port speed
+    --run-mode <type>   only show servers running from (all, ram, disk)
     --help              usage information
 ```

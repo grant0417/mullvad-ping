@@ -1,8 +1,8 @@
 # Mullvad Ping
 
-Gets the list of Mullvad servers with the best latency according to `ping`. 
+Gets the list of Mullvad servers with the best latency according to `ping`.
 
-Run 
+Run
 
 ```bash
 deno run --allow-net --allow-run https://raw.githubusercontent.com/grant0417/mullvad-ping/main/script.ts

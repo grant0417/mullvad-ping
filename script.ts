@@ -21,7 +21,7 @@ function sleep(ms: number) {
 }
 
 function checkRunMode(stboot: boolean, runMode: string) {
-  if(runMode == "all") {
+  if (runMode == "all") {
     return true;
   } else if (runMode == "ram" && stboot == true) {
     return true;
@@ -73,7 +73,7 @@ const portSpeed = parseInt(args["port-speed"] ?? 0) || 0;
 
 const runMode = args["run-mode"] ?? "all";
 if (!runTypes.includes(runMode)) {
-  console.error(`Invalid running-from, allowed types are: ${runTypes.join(", ")}`);
+  console.error(`Invalid run-mode, allowed types are: ${runTypes.join(", ")}`);
   Deno.exit(1);
 }
 

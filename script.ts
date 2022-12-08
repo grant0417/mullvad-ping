@@ -77,7 +77,7 @@ if (!runTypes.includes(runMode)) {
   Deno.exit(1);
 }
 
-console.log("Fetching currently avaiable relays...");
+console.log("Fetching currently available relays...");
 const response = await fetch(
   `https://api.mullvad.net/www/relays/${serverType}/`,
 );

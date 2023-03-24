@@ -39,7 +39,9 @@ if (args.help == true) {
   console.log(`Usage: script [OPTION]
     --country <code>      the country you want to query (eg. us, gb, de)
     --list-countries      lists the available countries
-    --type <type>         the type of server to query (${serverTypes.join(", ")})
+    --type <type>         the type of server to query (${
+    serverTypes.join(", ")
+  })
     --count <n>           the number of pings to the server (default 3)`);
   if (Deno.build.os != "windows") {
     console.log(
@@ -51,7 +53,9 @@ if (args.help == true) {
     --port-speed <n>      only show servers with at least n Gigabit port speed
     --provider <name>     only show servers from the given provider
     --owned <true|false>  only show servers owned by Mullvad
-    --run-mode <type>     only show servers running from (${runTypes.join(", ")})
+    --run-mode <type>     only show servers running from (${
+      runTypes.join(", ")
+    })
     --help                usage information`,
   );
   Deno.exit(0);
@@ -73,7 +77,9 @@ const portSpeed = parseInt(args["port-speed"] ?? 0) || 0;
 
 const runMode = args["run-mode"] ?? "all";
 if (!runTypes.includes(runMode)) {
-  throw new Error(`Invalid run-mode, allowed types are: ${runTypes.join(", ")}`);
+  throw new Error(
+    `Invalid run-mode, allowed types are: ${runTypes.join(", ")}`,
+  );
 }
 
 let owned: boolean | null = null;

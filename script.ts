@@ -1,4 +1,4 @@
-import { parse } from "https://deno.land/std@0.132.0/flags/mod.ts";
+import { parse } from "https://deno.land/std@0.181.0/flags/mod.ts";
 
 type ServerDataJSON = {
   hostname: string;
@@ -37,20 +37,22 @@ const runTypes = ["all", "ram", "disk"];
 const args = parse(Deno.args);
 if (args.help == true) {
   console.log(`Usage: script [OPTION]
-    --country <code>    the country you want to query (eg. us, gb, de)
-    --list-countries    lists the available countries
-    --type <type>       the type of server to query (${serverTypes.join(", ")})
-    --count <n>         the number of pings to the server (default 3)`);
+    --country <code>      the country you want to query (eg. us, gb, de)
+    --list-countries      lists the available countries
+    --type <type>         the type of server to query (${serverTypes.join(", ")})
+    --count <n>           the number of pings to the server (default 3)`);
   if (Deno.build.os != "windows") {
     console.log(
-      `    --interval <i>      the interval between pings in seconds (default/min 0.2)`,
+      `    --interval <i>        the interval between pings in seconds (default/min 0.2)`,
     );
   }
   console.log(
-    `    --top <n>           the number of top servers to show, (0=all)
-    --port-speed <n>    only show servers with at least n Gigabit port speed
-    --run-mode <type>   only show servers running from (${runTypes.join(", ")})
-    --help              usage information`,
+    `    --top <n>             the number of top servers to show, (0=all)
+    --port-speed <n>      only show servers with at least n Gigabit port speed
+    --provider <name>     only show servers from the given provider
+    --owned <true|false>  only show servers owned by Mullvad
+    --run-mode <type>     only show servers running from (${runTypes.join(", ")})
+    --help                usage information`,
   );
   Deno.exit(0);
 }
@@ -58,14 +60,12 @@ if (args.help == true) {
 const country = args.country;
 const serverType = args.type ?? "all";
 if (!serverTypes.includes(serverType)) {
-  console.error(`Invalid type, allowed types are: ${serverTypes.join(", ")}`);
-  Deno.exit(1);
+  throw new Error(`Invalid type, allowed types are: ${serverTypes.join(", ")}`);
 }
 
 const interval = parseFloat(args.interval ?? 0.2) || 0.2;
 if (interval < 0.2) {
-  console.error("Minimum interval value is 0.2");
-  Deno.exit(1);
+  throw new Error("Minimum interval value is 0.2");
 }
 const count = parseInt(args.count ?? 5) || 5;
 const topN = parseInt(args.top ?? 5) || 5;
@@ -73,9 +73,21 @@ const portSpeed = parseInt(args["port-speed"] ?? 0) || 0;
 
 const runMode = args["run-mode"] ?? "all";
 if (!runTypes.includes(runMode)) {
-  console.error(`Invalid run-mode, allowed types are: ${runTypes.join(", ")}`);
-  Deno.exit(1);
+  throw new Error(`Invalid run-mode, allowed types are: ${runTypes.join(", ")}`);
 }
+
+let owned: boolean | null = null;
+if (args.owned != null) {
+  if (args.owned == "true") {
+    owned = true;
+  } else if (args.owned == "false") {
+    owned = false;
+  } else {
+    throw new Error("Invalid value for owned, must be true or false");
+  }
+}
+
+const provider = args.provider;
 
 console.log("Fetching currently available relays...");
 const response = await fetch(
@@ -98,7 +110,9 @@ if (args["list-countries"]) {
     if (
       (country == null || country == server.country_code) &&
       (server.network_port_speed >= portSpeed) &&
-      checkRunMode(server.stboot, runMode)
+      checkRunMode(server.stboot, runMode) &&
+      (provider == null || provider == server.provider) &&
+      (owned == null || owned == server.owned)
     ) {
       let cmd = [];
       if (Deno.build.os == "windows") {

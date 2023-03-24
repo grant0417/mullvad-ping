@@ -31,3 +31,21 @@ Usage: script [OPTION]
     --run-mode <type>   only show servers running from (all, ram, disk)
     --help              usage information
 ```
+
+## Installation Guides
+
+### Windows Subsystem for Linux (WSL) [w/ default distro Ubuntu 20.04 LTS]
+
+#### Pre-requisites:
+
+Install Windows Subsystem for Linux (WSL):
+[Guide](https://learn.microsoft.com/en-us/windows/wsl/install)
+
+Install Deno:
+[Guide](https://www.digitalocean.com/community/tutorials/how-to-install-the-deno-javascript-runtime-on-ubuntu-20-04#step-1-downloading-deno)
+
+Now you can run the script:
+
+```
+deno run --allow-net --allow-run https://raw.githubusercontent.com/grant0417/mullvad-ping/main/script.ts
+```

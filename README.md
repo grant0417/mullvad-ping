@@ -32,13 +32,17 @@ Usage: script [OPTION]
     --help              usage information
 ```
 
-## How to run on Windows Subsystem for Linux (WSL) [w/ default distro Ubuntu 20.04 LTS]  
+## Installation Guides
 
-Pre-requisites:
+### Windows Subsystem for Linux (WSL) [w/ default distro Ubuntu 20.04 LTS]
 
-Windows Subsystem for Linux (WSL): [How To Install Linux on Windows with WSL](https://learn.microsoft.com/en-us/windows/wsl/install)
+#### Pre-requisites:
 
-Deno: [How To Install the Deno JavaScript Runtime on Ubuntu 20.04](https://www.digitalocean.com/community/tutorials/how-to-install-the-deno-javascript-runtime-on-ubuntu-20-04#step-1-downloading-deno)
+Install Windows Subsystem for Linux (WSL):
+[Guide](https://learn.microsoft.com/en-us/windows/wsl/install)
+
+Install Deno:
+[Guide](https://www.digitalocean.com/community/tutorials/how-to-install-the-deno-javascript-runtime-on-ubuntu-20-04#step-1-downloading-deno)
 
 Now you can run the script:
 

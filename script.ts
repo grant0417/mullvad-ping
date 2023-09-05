@@ -1,4 +1,4 @@
-import { parse } from "https://deno.land/std@0.181.0/flags/mod.ts";
+import { parse } from "https://deno.land/std@0.201.0/flags/mod.ts";
 
 type ServerDataJSON = {
   hostname: string;
@@ -61,8 +61,8 @@ if (args.help == true) {
   Deno.exit(0);
 }
 
-const country = args.country;
-const serverType = args.type ?? "all";
+const country = args.country?.toLowerCase();
+const serverType = args.type?.toLowerCase() ?? "all";
 if (!serverTypes.includes(serverType)) {
   throw new Error(`Invalid type, allowed types are: ${serverTypes.join(", ")}`);
 }
@@ -75,7 +75,7 @@ const count = parseInt(args.count ?? 5) || 5;
 const topN = parseInt(args.top ?? 5) || 5;
 const portSpeed = parseInt(args["port-speed"] ?? 0) || 0;
 
-const runMode = args["run-mode"] ?? "all";
+const runMode = args["run-mode"]?.toLowerCase() ?? "all";
 if (!runTypes.includes(runMode)) {
   throw new Error(
     `Invalid run-mode, allowed types are: ${runTypes.join(", ")}`,
@@ -120,12 +120,11 @@ if (args["list-countries"]) {
       (provider == null || provider == server.provider) &&
       (owned == null || owned == server.owned)
     ) {
-      let cmd = [];
+      let args = [];
       if (Deno.build.os == "windows") {
-        cmd = ["ping", "-n", count.toString(), server.ipv4_addr_in];
+        args = ["-n", count.toString(), server.ipv4_addr_in];
       } else {
-        cmd = [
-          "ping",
+        args = [
           "-c",
           count.toString(),
           "-i",
@@ -134,12 +133,15 @@ if (args["list-countries"]) {
         ];
       }
 
-      const p = Deno.run({
-        cmd,
-        stdout: "piped",
-      });
+      const p = new Deno.Command(
+        "ping",
+        {
+          args,
+          stdout: "piped",
+        },
+      );
 
-      const output = new TextDecoder().decode(await p.output());
+      const output = new TextDecoder().decode((await p.output()).stdout);
 
       if (Deno.build.os == "windows") {
         // [all, min, avg, max, mdev]

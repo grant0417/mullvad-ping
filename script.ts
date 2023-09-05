@@ -61,7 +61,7 @@ if (args.help == true) {
   Deno.exit(0);
 }
 
-const country = args.country;
+const country = args.country?.toLowerCase();
 const serverType = args.type ?? "all";
 if (!serverTypes.includes(serverType)) {
   throw new Error(`Invalid type, allowed types are: ${serverTypes.join(", ")}`);

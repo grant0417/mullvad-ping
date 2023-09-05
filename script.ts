@@ -62,7 +62,7 @@ if (args.help == true) {
 }
 
 const country = args.country?.toLowerCase();
-const serverType = args.type ?? "all";
+const serverType = args.type?.toLowerCase() ?? "all";
 if (!serverTypes.includes(serverType)) {
   throw new Error(`Invalid type, allowed types are: ${serverTypes.join(", ")}`);
 }
@@ -75,7 +75,7 @@ const count = parseInt(args.count ?? 5) || 5;
 const topN = parseInt(args.top ?? 5) || 5;
 const portSpeed = parseInt(args["port-speed"] ?? 0) || 0;
 
-const runMode = args["run-mode"] ?? "all";
+const runMode = args["run-mode"]?.toLowerCase() ?? "all";
 if (!runTypes.includes(runMode)) {
   throw new Error(
     `Invalid run-mode, allowed types are: ${runTypes.join(", ")}`,

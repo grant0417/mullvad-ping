@@ -1,4 +1,4 @@
-import { parse } from "https://deno.land/std@0.181.0/flags/mod.ts";
+import { parse } from "https://deno.land/std@0.201.0/flags/mod.ts";
 
 type ServerDataJSON = {
   hostname: string;
@@ -120,12 +120,11 @@ if (args["list-countries"]) {
       (provider == null || provider == server.provider) &&
       (owned == null || owned == server.owned)
     ) {
-      let cmd = [];
+      let args = [];
       if (Deno.build.os == "windows") {
-        cmd = ["ping", "-n", count.toString(), server.ipv4_addr_in];
+        args = ["-n", count.toString(), server.ipv4_addr_in];
       } else {
-        cmd = [
-          "ping",
+        args = [
           "-c",
           count.toString(),
           "-i",
@@ -134,12 +133,15 @@ if (args["list-countries"]) {
         ];
       }
 
-      const p = Deno.run({
-        cmd,
-        stdout: "piped",
-      });
+      const p = new Deno.Command(
+        "ping",
+        {
+          args,
+          stdout: "piped",
+        },
+      );
 
-      const output = new TextDecoder().decode(await p.output());
+      const output = new TextDecoder().decode((await p.output()).stdout);
 
       if (Deno.build.os == "windows") {
         // [all, min, avg, max, mdev]

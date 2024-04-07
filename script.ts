@@ -1,4 +1,4 @@
-import { parse } from "https://deno.land/std@0.201.0/flags/mod.ts";
+import { parseArgs, Spinner } from "https://deno.land/std@0.221.0/cli/mod.ts";
 
 type ServerDataJSON = {
   hostname: string;
@@ -34,10 +34,14 @@ function checkRunMode(stboot: boolean, runMode: string) {
 const serverTypes = ["openvpn", "bridge", "wireguard", "all"];
 const runTypes = ["all", "ram", "disk"];
 
-const args = parse(Deno.args);
+const args = parseArgs(Deno.args, {
+  "--": false,
+});
+
 if (args.help == true) {
   console.log(`Usage: script [OPTION]
     --country <code>      the country you want to query (eg. us, gb, de)
+    --list <plain|json>   lists the available servers
     --list-countries      lists the available countries
     --type <type>         the type of server to query (${
     serverTypes.join(", ")
@@ -95,11 +99,35 @@ if (args.owned != null) {
 
 const provider = args.provider;
 
-console.log("Fetching currently available relays...");
+let fetchingSpinner: Spinner | undefined;
+if (Deno.stdout.isTerminal()) {
+  fetchingSpinner = new Spinner({
+    message: "Fetching currently available relays...",
+    color: "cyan",
+  });
+  fetchingSpinner.start();
+}
+
 const response = await fetch(
   `https://api.mullvad.net/www/relays/${serverType}/`,
 );
+
+if (fetchingSpinner) {
+  fetchingSpinner.stop();
+
+  console.log("Fetched available relays");
+  console.log();
+}
+
 const json: Array<ServerDataJSON> = await response.json();
+
+const servers = json.filter((server) =>
+  (country == null || country == server.country_code) &&
+  (server.network_port_speed >= portSpeed) &&
+  checkRunMode(server.stboot, runMode) &&
+  (provider == null || provider == server.provider) &&
+  (owned == null || owned == server.owned)
+);
 
 if (args["list-countries"]) {
   const countries = new Set();
@@ -109,84 +137,93 @@ if (args["list-countries"]) {
   countries.forEach((e) => {
     console.log(e);
   });
+} else if (args.list) {
+  if (args.list == "json") {
+    console.log(JSON.stringify(servers, null, 2));
+  } else if (args.list == "plain" || args.list == true) {
+    for (const server of servers) {
+      console.log(
+        `${server.hostname}.mullvad.net, ${server.city_name}, ${server.country_name} (${server.network_port_speed} Gigabit ${server.type})`,
+      );
+    }
+  } else {
+    throw new Error("Invalid list type, must be json or plain");
+  }
 } else {
   const results = [];
 
-  for (const server of json) {
-    if (
-      (country == null || country == server.country_code) &&
-      (server.network_port_speed >= portSpeed) &&
-      checkRunMode(server.stboot, runMode) &&
-      (provider == null || provider == server.provider) &&
-      (owned == null || owned == server.owned)
-    ) {
-      let args = [];
-      if (Deno.build.os == "windows") {
-        args = ["-n", count.toString(), server.ipv4_addr_in];
-      } else {
-        args = [
-          "-c",
-          count.toString(),
-          "-i",
-          interval.toString(),
-          server.ipv4_addr_in,
-        ];
+  for (const server of servers) {
+    let args = [];
+    if (Deno.build.os == "windows") {
+      args = ["-n", count.toString(), server.ipv4_addr_in];
+    } else {
+      args = [
+        "-c",
+        count.toString(),
+        "-i",
+        interval.toString(),
+        server.ipv4_addr_in,
+      ];
+    }
+
+    const p = new Deno.Command(
+      "ping",
+      {
+        args,
+        stdout: "piped",
+      },
+    );
+
+    let pingSpinner: Spinner | undefined;
+    if (Deno.stdout.isTerminal()) {
+      pingSpinner = new Spinner({
+        message: `${server.hostname}.mullvad.net`,
+        color: "cyan",
+      });
+      pingSpinner.start();
+    }
+    const output = new TextDecoder().decode((await p.output()).stdout);
+    if (pingSpinner) {
+      pingSpinner.stop();
+    }
+
+    if (Deno.build.os == "windows") {
+      // [all, min, avg, max, mdev]
+      const regex = /Average = (\d*)ms/;
+      const avg = output.match(regex);
+      if (avg) {
+        console.log(`  ${server.hostname}.mullvad.net, avg ${avg[1]}ms`);
+
+        results.push({
+          hostname: server.hostname,
+          city: server.city_name,
+          country: server.country_name,
+          type: server.type,
+          ip: server.ipv4_addr_in,
+          avg: parseFloat(avg[1]) || 0,
+          network_port_speed: server.network_port_speed,
+        });
       }
+    } else {
+      // [all, min, avg, max, mdev]
+      const regex =
+        /(?<min>\d+(?:.\d+)?)\/(?<avg>\d+(?:.\d+)?)\/(?<max>\d+(?:.\d+)?)\/(?<mdev>\d+(?:.\d+)?)/;
 
-      const p = new Deno.Command(
-        "ping",
-        {
-          args,
-          stdout: "piped",
-        },
-      );
+      const values = output.match(regex);
+      if (values) {
+        console.log(
+          `  ${server.hostname}.mullvad.net, min/avg/max/mdev ${values[0]}`,
+        );
 
-      const output = new TextDecoder().decode((await p.output()).stdout);
-
-      if (Deno.build.os == "windows") {
-        // [all, min, avg, max, mdev]
-        const regex = /Average = (\d*)ms/;
-        const avg = output.match(regex);
-        if (avg) {
-          console.log(`Pinged ${server.hostname}.mullvad.net, avg ${avg[1]}ms`);
-
-          results.push({
-            hostname: server.hostname,
-            city: server.city_name,
-            country: server.country_name,
-            type: server.type,
-            ip: server.ipv4_addr_in,
-            avg: parseFloat(avg[1]) || 0,
-            network_port_speed: server.network_port_speed,
-          });
-        }
-
-        await sleep(200);
-      } else {
-        // [all, min, avg, max, mdev]
-        const regex =
-          /(?<min>\d+(?:.\d+)?)\/(?<avg>\d+(?:.\d+)?)\/(?<max>\d+(?:.\d+)?)\/(?<mdev>\d+(?:.\d+)?)/;
-
-        const values = output.match(regex);
-        if (values) {
-          console.log(
-            `Pinged ${server.hostname}.mullvad.net, min/avg/max/mdev ${
-              values[0]
-            }`,
-          );
-
-          results.push({
-            hostname: server.hostname,
-            city: server.city_name,
-            country: server.country_name,
-            type: server.type,
-            ip: server.ipv4_addr_in,
-            avg: parseFloat(values[2]) || 0,
-            network_port_speed: server.network_port_speed,
-          });
-        }
-
-        await sleep(interval * 1000);
+        results.push({
+          hostname: server.hostname,
+          city: server.city_name,
+          country: server.country_name,
+          type: server.type,
+          ip: server.ipv4_addr_in,
+          avg: parseFloat(values[2]) || 0,
+          network_port_speed: server.network_port_speed,
+        });
       }
     }
   }

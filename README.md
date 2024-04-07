@@ -2,16 +2,16 @@
 
 Gets the list of Mullvad servers with the best latency according to `ping`.
 
-Run
+## Install
 
-```bash
-deno run --allow-net --allow-run https://raw.githubusercontent.com/grant0417/mullvad-ping/main/script.ts
-```
+1. First
+   [install Deno](https://docs.deno.com/runtime/manual/getting_started/installation),
+   an open-source runtime for TypeScript and JavaScript.
 
-Build Exe
+2. Run the following command
 
-```
-deno compile --allow-net --allow-run -o mullvad-ping https://raw.githubusercontent.com/grant0417/mullvad-ping/main/script.ts
+```shell
+deno run --allow-net=api.mullvad.net,deno.land --allow-run=ping https://raw.githubusercontent.com/grant0417/mullvad-ping/v0.6.0/script.ts
 ```
 
 Note: The Windows version of `ping` is somewhat more limited than that of Linux
@@ -22,6 +22,7 @@ or Mac so the times are less precice and the script will take ~5x longer.
 ```
 Usage: script [OPTION]
     --country <code>      the country you want to query (eg. us, gb, de)
+    --list <plain|json>   lists the available servers
     --list-countries      lists the available countries
     --type <type>         the type of server to query (openvpn, bridge, wireguard, all)
     --count <n>           the number of pings to the server (default 3)
@@ -32,22 +33,4 @@ Usage: script [OPTION]
     --owned <true|false>  only show servers owned by Mullvad
     --run-mode <type>     only show servers running from (all, ram, disk)
     --help                usage information
-```
-
-## Installation Guides
-
-### Windows Subsystem for Linux (WSL) [w/ default distro Ubuntu 20.04 LTS]
-
-#### Pre-requisites:
-
-Install Windows Subsystem for Linux (WSL):
-[Guide](https://learn.microsoft.com/en-us/windows/wsl/install)
-
-Install Deno:
-[Guide](https://www.digitalocean.com/community/tutorials/how-to-install-the-deno-javascript-runtime-on-ubuntu-20-04#step-1-downloading-deno)
-
-Now you can run the script:
-
-```
-deno run --allow-net --allow-run https://raw.githubusercontent.com/grant0417/mullvad-ping/main/script.ts
 ```

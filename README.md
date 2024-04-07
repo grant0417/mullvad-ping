@@ -18,7 +18,7 @@ deno run --allow-net=api.mullvad.net,deno.land --allow-run=ping https://raw.gith
    [releases page](https://github.com/grant0417/mullvad-ping/releases/).
 
 Note: The Windows version of `ping` is somewhat more limited than that of Linux
-or Mac so the times are less precice and the script will take ~5x longer.
+or Mac so the times are less precise and the script will take ~5x longer.
 
 ## CLI Usage
 

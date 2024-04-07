@@ -6,6 +6,9 @@ import {
   red,
 } from "https://deno.land/std@0.221.0/fmt/colors.ts";
 
+const CLI_NAME = "mullvad-ping";
+const VERSION = "v0.8.0";
+
 type ServerData = {
   hostname: string;
   country_code: string;
@@ -36,24 +39,17 @@ function error(...message: unknown[]) {
   Deno.exit(1);
 }
 
-function checkRunMode(stboot: boolean, runMode: string) {
-  if (runMode === "all") {
-    return true;
-  } else if (runMode === "ram" && stboot === true) {
-    return true;
-  } else if (runMode === "disk" && stboot === false) {
-    return true;
-  }
-  return false;
-}
-
 const serverTypes = ["openvpn", "bridge", "wireguard", "all"];
-const runTypes = ["all", "ram", "disk"];
+const ownerTypes = ["mullvad", "rented", "all"];
+const runTypes = ["ram", "disk", "all"];
 
 const INTERVAL_DEFAULT = 0.2;
 const COUNT_DEFAULT = 5;
 const TOP_DEFAULT = 5;
 const PORT_SPEED_DEFAULT = 0;
+const RUN_MODE_DEFAULT = "all";
+const OWNER_DEFAULT = "all";
+const TYPE_DEFAULT = "all";
 
 const args = parseArgs(Deno.args, {
   "--": false,
@@ -63,7 +59,7 @@ const args = parseArgs(Deno.args, {
     "interval",
     "count",
     "top",
-    "owned",
+    "owner",
     "port-speed",
     "provider",
     "run-mode",
@@ -75,17 +71,28 @@ const args = parseArgs(Deno.args, {
     "list-providers",
     "include-inactive",
     "json",
+    "version",
   ],
   alias: {
+    c: "country",
+    l: "list",
+    t: "type",
+    C: "count",
+    n: "top",
+    s: "port-speed",
+    p: "provider",
+    j: "json",
     h: "help",
+    V: "version",
   },
   default: {
     interval: `${INTERVAL_DEFAULT}`,
     count: `${COUNT_DEFAULT}`,
     top: `${TOP_DEFAULT}`,
     "port-speed": `${PORT_SPEED_DEFAULT}`,
-    "run-mode": "all",
-    "type": "all",
+    "run-mode": RUN_MODE_DEFAULT,
+    owner: OWNER_DEFAULT,
+    "type": TYPE_DEFAULT,
   },
   unknown: (arg) => {
     error(`Unknown argument ${arg}`);
@@ -93,25 +100,41 @@ const args = parseArgs(Deno.args, {
 });
 
 if (args.help) {
-  console.log(`Usage: script [OPTION]
-    --country <code>      the country you want to query (eg. us, gb, de)
-    --list                lists the available servers
-    --list-countries      lists the available countries
-    --list-providers      lists the available providers
-    --type <type>         the type of server to query (${
-    serverTypes.join(", ")
-  })
-    --count <n>           the number of pings to the server (default ${COUNT_DEFAULT})
-    --top <n>             the number of top servers to show, (0=all, default ${TOP_DEFAULT})
-    --port-speed <n>      only show servers with at least n Gigabit port speed
-    --provider <name>     only show servers from the given provider
-    --owned <true|false>  only show servers owned by Mullvad
-    --run-mode <type>     only show servers running from (${
-    runTypes.join(", ")
-  })
-    --include-inactive    include inactive servers
-    --json                output the results in JSON format
-    --help, -h            display this help and exit`);
+  const serverTypesStr = serverTypes.join(", ");
+  const ownerTypesStr = ownerTypes.join(", ");
+  const runTypesStr = runTypes.join(", ");
+
+  // This help is formatted like cargo's help
+  console.log(
+    `Gets the list of Mullvad servers with the best latency according to ping
+
+${green(bold("Usage:"))} ${cyan(bold(CLI_NAME))} ${cyan("[OPTIONS]")}
+
+${green(bold("Options:"))}
+  -c, --country <CODE>      the country you want to query (eg. us, gb, de)
+  -l, --list                lists the available servers
+      --list-countries      lists the available countries
+      --list-providers      lists the available providers
+  -t, --type <TYPE>         the type of server to query (${serverTypesStr})
+  -C, --count <COUNT>       the number of pings to the server (default ${COUNT_DEFAULT})
+  -n, --top <TOPN>          the number of top servers to show, (0=all, default ${TOP_DEFAULT})
+  -s, --port-speed <SPEED>  only show servers with at least n Gbps port speed
+  -p, --provider <NAME>     only show servers from the given provider
+      --owner <OWNER>       only show servers by owner (${ownerTypesStr})
+      --run-mode <TYPE>     only show servers running from (${runTypesStr})
+      --include-inactive    include inactive servers
+  -j, --json                output the results in JSON format
+  -h, --help                display this help and exit
+  -V, --version             display version information and exit`
+      .replace(/(--?[a-zA-Z-]+)/g, cyan(bold("$1")))
+      .replace(/(<[^>]+>)/g, cyan("$1")),
+  );
+
+  Deno.exit(0);
+}
+
+if (args.version) {
+  console.log(CLI_NAME, VERSION);
   Deno.exit(0);
 }
 
@@ -133,6 +156,11 @@ const count = parseInt(args.count) || COUNT_DEFAULT;
 const topN = parseInt(args.top) || TOP_DEFAULT;
 const portSpeed = parseInt(args["port-speed"]) || PORT_SPEED_DEFAULT;
 
+const owned = args.owner.toLowerCase();
+if (!ownerTypes.includes(owned)) {
+  error(`Invalid owner, allowed types are: ${ownerTypes.join(", ")}`);
+}
+
 const runMode = args["run-mode"].toLowerCase();
 if (!runTypes.includes(runMode)) {
   error(
@@ -140,18 +168,11 @@ if (!runTypes.includes(runMode)) {
   );
 }
 
-let owned: boolean | undefined;
-if (typeof args.owned === "string") {
-  const argOwner = args.owned.toLowerCase();
-  if (argOwner === "true") {
-    owned = true;
-  } else if (argOwner === "false") {
-    owned = false;
-  } else {
-    error(
-      "Invalid value for owned, must be true or false. Example: --owned true",
-    );
-  }
+// ensure that no more than 1 of list, list-countries, list-providers is set
+const listCount = [args.list, args["list-countries"], args["list-providers"]]
+  .filter((e) => e).length;
+if (listCount > 1) {
+  error("Only one of list, list-countries, list-providers can be set");
 }
 
 const provider = args.provider;
@@ -176,6 +197,28 @@ if (fetchingSpinner) {
   console.log();
 }
 
+function checkRunMode(stboot: boolean, runMode: string) {
+  if (runMode === "all") {
+    return true;
+  } else if (runMode === "ram" && stboot === true) {
+    return true;
+  } else if (runMode === "disk" && stboot === false) {
+    return true;
+  }
+  return false;
+}
+
+function checkOwnership(owned: string, server: ServerData) {
+  if (owned === "all") {
+    return true;
+  } else if (owned === "mullvad" && server.owned) {
+    return true;
+  } else if (owned === "rented" && !server.owned) {
+    return true;
+  }
+  return false;
+}
+
 const json: Array<ServerData> = await response.json();
 
 const servers = json.filter((server) =>
@@ -183,7 +226,7 @@ const servers = json.filter((server) =>
   (server.network_port_speed >= portSpeed) &&
   checkRunMode(server.stboot, runMode) &&
   (provider === undefined || provider === server.provider) &&
-  (owned === undefined || owned === server.owned) &&
+  checkOwnership(owned, server) &&
   (args["include-inactive"] || server.active)
 );
 

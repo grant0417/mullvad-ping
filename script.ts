@@ -16,10 +16,6 @@ type ServerDataJSON = {
   type: string;
 };
 
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 function checkRunMode(stboot: boolean, runMode: string) {
   if (runMode == "all") {
     return true;

@@ -1,6 +1,12 @@
 import { parseArgs, Spinner } from "https://deno.land/std@0.221.0/cli/mod.ts";
+import {
+  bold,
+  cyan,
+  green,
+  red,
+} from "https://deno.land/std@0.221.0/fmt/colors.ts";
 
-type ServerDataJSON = {
+type ServerData = {
   hostname: string;
   country_code: string;
   country_name: string;
@@ -16,12 +22,26 @@ type ServerDataJSON = {
   type: string;
 };
 
+type ResultServerData = {
+  avg: number;
+  min?: number;
+  max?: number;
+  mdev?: number;
+} & ServerData;
+
+function error(...message: unknown[]) {
+  console.error(red(bold("error:")), ...message);
+  console.error();
+  console.trace();
+  Deno.exit(1);
+}
+
 function checkRunMode(stboot: boolean, runMode: string) {
-  if (runMode == "all") {
+  if (runMode === "all") {
     return true;
-  } else if (runMode == "ram" && stboot == true) {
+  } else if (runMode === "ram" && stboot === true) {
     return true;
-  } else if (runMode == "disk" && stboot == false) {
+  } else if (runMode === "disk" && stboot === false) {
     return true;
   }
   return false;
@@ -30,75 +50,116 @@ function checkRunMode(stboot: boolean, runMode: string) {
 const serverTypes = ["openvpn", "bridge", "wireguard", "all"];
 const runTypes = ["all", "ram", "disk"];
 
+const INTERVAL_DEFAULT = 0.2;
+const COUNT_DEFAULT = 5;
+const TOP_DEFAULT = 5;
+const PORT_SPEED_DEFAULT = 0;
+
 const args = parseArgs(Deno.args, {
   "--": false,
+  string: [
+    "country",
+    "type",
+    "interval",
+    "count",
+    "top",
+    "owned",
+    "port-speed",
+    "provider",
+    "run-mode",
+  ],
+  boolean: [
+    "help",
+    "list",
+    "list-countries",
+    "list-providers",
+    "include-inactive",
+    "json",
+  ],
+  alias: {
+    h: "help",
+  },
+  default: {
+    interval: `${INTERVAL_DEFAULT}`,
+    count: `${COUNT_DEFAULT}`,
+    top: `${TOP_DEFAULT}`,
+    "port-speed": `${PORT_SPEED_DEFAULT}`,
+    "run-mode": "all",
+    "type": "all",
+  },
+  unknown: (arg) => {
+    error(`Unknown argument ${arg}`);
+  },
 });
 
-if (args.help == true) {
+if (args.help) {
   console.log(`Usage: script [OPTION]
     --country <code>      the country you want to query (eg. us, gb, de)
-    --list <plain|json>   lists the available servers
+    --list                lists the available servers
     --list-countries      lists the available countries
+    --list-providers      lists the available providers
     --type <type>         the type of server to query (${
     serverTypes.join(", ")
   })
-    --count <n>           the number of pings to the server (default 3)`);
-  if (Deno.build.os != "windows") {
-    console.log(
-      `    --interval <i>        the interval between pings in seconds (default/min 0.2)`,
-    );
-  }
-  console.log(
-    `    --top <n>             the number of top servers to show, (0=all)
+    --count <n>           the number of pings to the server (default ${COUNT_DEFAULT})
+    --top <n>             the number of top servers to show, (0=all, default ${TOP_DEFAULT})
     --port-speed <n>      only show servers with at least n Gigabit port speed
     --provider <name>     only show servers from the given provider
     --owned <true|false>  only show servers owned by Mullvad
     --run-mode <type>     only show servers running from (${
-      runTypes.join(", ")
-    })
-    --help                usage information`,
-  );
+    runTypes.join(", ")
+  })
+    --include-inactive    include inactive servers
+    --json                output the results in JSON format
+    --help, -h            display this help and exit`);
   Deno.exit(0);
 }
 
+// Color output only if the input and output are terminals and not JSON
+const isInteractive = Deno.stdout.isTerminal() && Deno.stdin.isTerminal() &&
+  !args.json;
+
 const country = args.country?.toLowerCase();
-const serverType = args.type?.toLowerCase() ?? "all";
+const serverType = args.type.toLowerCase();
 if (!serverTypes.includes(serverType)) {
-  throw new Error(`Invalid type, allowed types are: ${serverTypes.join(", ")}`);
+  error(`Invalid type, allowed types are: ${serverTypes.join(", ")}`);
 }
 
-const interval = parseFloat(args.interval ?? 0.2) || 0.2;
-if (interval < 0.2) {
-  throw new Error("Minimum interval value is 0.2");
+const interval = parseFloat(args.interval) || INTERVAL_DEFAULT;
+if (interval < INTERVAL_DEFAULT) {
+  error(`Minimum interval value is ${INTERVAL_DEFAULT}`);
 }
-const count = parseInt(args.count ?? 5) || 5;
-const topN = parseInt(args.top ?? 5) || 5;
-const portSpeed = parseInt(args["port-speed"] ?? 0) || 0;
+const count = parseInt(args.count) || COUNT_DEFAULT;
+const topN = parseInt(args.top) || TOP_DEFAULT;
+const portSpeed = parseInt(args["port-speed"]) || PORT_SPEED_DEFAULT;
 
-const runMode = args["run-mode"]?.toLowerCase() ?? "all";
+const runMode = args["run-mode"].toLowerCase();
 if (!runTypes.includes(runMode)) {
-  throw new Error(
+  error(
     `Invalid run-mode, allowed types are: ${runTypes.join(", ")}`,
   );
 }
 
-let owned: boolean | null = null;
-if (args.owned != null) {
-  if (args.owned == "true") {
+let owned: boolean | undefined;
+if (typeof args.owned === "string") {
+  const argOwner = args.owned.toLowerCase();
+  if (argOwner === "true") {
     owned = true;
-  } else if (args.owned == "false") {
+  } else if (argOwner === "false") {
     owned = false;
   } else {
-    throw new Error("Invalid value for owned, must be true or false");
+    error(
+      "Invalid value for owned, must be true or false. Example: --owned true",
+    );
   }
 }
 
 const provider = args.provider;
 
 let fetchingSpinner: Spinner | undefined;
-if (Deno.stdout.isTerminal()) {
+if (isInteractive) {
   fetchingSpinner = new Spinner({
-    message: "Fetching currently available relays...",
+    message: "Fetching currently available relays",
     color: "cyan",
   });
   fetchingSpinner.start();
@@ -111,49 +172,69 @@ const response = await fetch(
 if (fetchingSpinner) {
   fetchingSpinner.stop();
 
-  console.log("Fetched available relays");
+  console.log(green("✓"), "Fetched available relays");
   console.log();
 }
 
-const json: Array<ServerDataJSON> = await response.json();
+const json: Array<ServerData> = await response.json();
 
 const servers = json.filter((server) =>
-  (country == null || country == server.country_code) &&
+  (country === undefined || country === server.country_code) &&
   (server.network_port_speed >= portSpeed) &&
   checkRunMode(server.stboot, runMode) &&
-  (provider == null || provider == server.provider) &&
-  (owned == null || owned == server.owned)
+  (provider === undefined || provider === server.provider) &&
+  (owned === undefined || owned === server.owned) &&
+  (args["include-inactive"] || server.active)
 );
 
 if (args["list-countries"]) {
-  const countries = new Set();
-  json.forEach((e) => {
-    countries.add(`${e.country_code} - ${e.country_name}`);
+  const countries = new Map<string, string>();
+  json.forEach((server) => {
+    countries.set(server.country_code, server.country_name);
   });
-  countries.forEach((e) => {
-    console.log(e);
+
+  if (args.json) {
+    console.log(JSON.stringify(Object.fromEntries(countries), null, 2));
+  } else {
+    // sort by country code
+    const sortedCountries = Array.from(countries).sort((a, b) =>
+      a[0].localeCompare(b[0])
+    );
+    for (const country of sortedCountries) {
+      console.log(`${country[0]}: ${country[1]}`);
+    }
+  }
+} else if (args["list-providers"]) {
+  const providers = new Set<string>();
+  json.forEach((server) => {
+    providers.add(server.provider);
   });
+
+  if (args.json) {
+    console.log(JSON.stringify(Array.from(providers), null, 2));
+  } else {
+    providers.forEach((provider) => {
+      console.log(provider);
+    });
+  }
 } else if (args.list) {
-  if (args.list == "json") {
+  if (args.json) {
     console.log(JSON.stringify(servers, null, 2));
-  } else if (args.list == "plain" || args.list == true) {
+  } else {
     for (const server of servers) {
       console.log(
         `${server.hostname}.mullvad.net, ${server.city_name}, ${server.country_name} (${server.network_port_speed} Gigabit ${server.type})`,
       );
     }
-  } else {
-    throw new Error("Invalid list type, must be json or plain");
   }
 } else {
-  const results = [];
-
+  const results: ResultServerData[] = [];
   for (const server of servers) {
-    let args = [];
-    if (Deno.build.os == "windows") {
-      args = ["-n", count.toString(), server.ipv4_addr_in];
+    let pingArgs = [];
+    if (Deno.build.os === "windows") {
+      pingArgs = ["-n", count.toString(), server.ipv4_addr_in];
     } else {
-      args = [
+      pingArgs = [
         "-c",
         count.toString(),
         "-i",
@@ -165,61 +246,75 @@ if (args["list-countries"]) {
     const p = new Deno.Command(
       "ping",
       {
-        args,
+        args: pingArgs,
         stdout: "piped",
       },
     );
 
     let pingSpinner: Spinner | undefined;
-    if (Deno.stdout.isTerminal()) {
+    if (isInteractive) {
       pingSpinner = new Spinner({
-        message: `${server.hostname}.mullvad.net`,
+        message: server.hostname,
         color: "cyan",
       });
       pingSpinner.start();
     }
-    const output = new TextDecoder().decode((await p.output()).stdout);
+
+    const output = await p.output();
+
     if (pingSpinner) {
       pingSpinner.stop();
     }
 
-    if (Deno.build.os == "windows") {
-      // [all, min, avg, max, mdev]
-      const regex = /Average = (\d*)ms/;
-      const avg = output.match(regex);
-      if (avg) {
-        console.log(`  ${server.hostname}.mullvad.net, avg ${avg[1]}ms`);
+    if (output.success) {
+      const stdout = new TextDecoder().decode(output.stdout);
 
-        results.push({
-          hostname: server.hostname,
-          city: server.city_name,
-          country: server.country_name,
-          type: server.type,
-          ip: server.ipv4_addr_in,
-          avg: parseFloat(avg[1]) || 0,
-          network_port_speed: server.network_port_speed,
-        });
+      if (Deno.build.os === "windows") {
+        // [all, min, avg, max, mdev]
+        const regex = /Average = (\d*)ms/;
+        const avg = stdout.match(regex);
+        if (avg) {
+          if (!args.json) {
+            console.log(
+              isInteractive ? green("✓") : "",
+              `${server.hostname}, avg ${avg[1]}ms`,
+            );
+          }
+
+          results.push({
+            ...server,
+            avg: parseFloat(avg[1]) || 0,
+          });
+        }
+      } else {
+        // [all, min, avg, max, mdev]
+        const regex =
+          /(?<min>\d+(?:.\d+)?)\/(?<avg>\d+(?:.\d+)?)\/(?<max>\d+(?:.\d+)?)\/(?<mdev>\d+(?:.\d+)?)/;
+
+        const values = stdout.match(regex);
+        if (values) {
+          if (!args.json) {
+            console.log(
+              isInteractive ? green("✓") : "",
+              `${server.hostname}, min/avg/max/mdev ${values[0]}`,
+            );
+          }
+
+          results.push({
+            ...server,
+            min: parseFloat(values[1]),
+            avg: parseFloat(values[2]),
+            max: parseFloat(values[3]),
+            mdev: parseFloat(values[4]),
+          });
+        }
       }
     } else {
-      // [all, min, avg, max, mdev]
-      const regex =
-        /(?<min>\d+(?:.\d+)?)\/(?<avg>\d+(?:.\d+)?)\/(?<max>\d+(?:.\d+)?)\/(?<mdev>\d+(?:.\d+)?)/;
-
-      const values = output.match(regex);
-      if (values) {
+      if (!args.json) {
         console.log(
-          `  ${server.hostname}.mullvad.net, min/avg/max/mdev ${values[0]}`,
+          isInteractive ? red("✗") : "",
+          `${server.hostname} (${server.ipv4_addr_in}), failed to ping`,
         );
-
-        results.push({
-          hostname: server.hostname,
-          city: server.city_name,
-          country: server.country_name,
-          type: server.type,
-          ip: server.ipv4_addr_in,
-          avg: parseFloat(values[2]) || 0,
-          network_port_speed: server.network_port_speed,
-        });
       }
     }
   }
@@ -228,20 +323,84 @@ if (args["list-countries"]) {
     return a.avg - b.avg;
   });
 
-  const top = topN == 0 ? results : results.slice(0, topN);
-
-  if (top.length > 0) {
-    console.log(`\n\n\nTop ${top.length} results:`);
-
-    for (const e of top) {
-      console.log(
-        ` - ${e.hostname}.mullvad.net (${
-          e.avg.toFixed(1)
-        }ms) ${e.network_port_speed} Gigabit ${e.type} ${e.city}, ${e.country}`,
-      );
-    }
-    console.table();
+  if (args.json) {
+    console.log(JSON.stringify(results, null, 2));
   } else {
-    console.error("No servers found");
+    const top = topN === 0 ? results : results.slice(0, topN);
+    if (top.length > 0) {
+      const preMsg = `\n\nTop ${top.length} results (lower avg is better)\n`;
+      console.log(isInteractive ? bold(cyan(preMsg)) : preMsg);
+
+      const hostnames = top.map((e) => e.hostname);
+      const maxHostnameLength = Math.max(
+        "Hostname".length,
+        ...hostnames.map((e) => e.length),
+      );
+
+      const avg = top.map((e) => `${e.avg.toFixed(1)}ms`);
+      const maxAvgLength = Math.max(
+        "Avg".length,
+        ...avg.map((e) => e.length),
+      );
+
+      const speeds = top.map((e) => `${e.network_port_speed} Gbps`);
+      const maxSpeedLength = Math.max(
+        "Speed".length,
+        ...speeds.map((e) => e.length),
+      );
+
+      const countries = top.map((e) => e.country_name);
+      const maxCountryLength = Math.max(
+        "Country".length,
+        ...countries.map((e) => e.length),
+      );
+
+      const cities = top.map((e) => e.city_name);
+      const maxCityLength = Math.max(
+        "City".length,
+        ...cities.map((e) => e.length),
+      );
+
+      const provider = top.map((e) => e.provider);
+      const maxProviderLength = Math.max(
+        "Provider".length,
+        ...provider.map((e) => e.length),
+      );
+
+      const ownership = top.map((e) => e.owned ? "Owned by Mullvad" : "Rented");
+      const maxOwnershipLength = Math.max(
+        "Ownership".length,
+        ...ownership.map((e) => e.length),
+      );
+
+      const header = [
+        "Hostname".padEnd(maxHostnameLength),
+        "Avg".padEnd(maxAvgLength),
+        "Speed".padEnd(maxSpeedLength),
+        "Country".padEnd(maxCountryLength),
+        "City".padEnd(maxCityLength),
+        "Provider".padEnd(maxProviderLength),
+        "Ownership".padEnd(maxOwnershipLength),
+      ].join("   ");
+
+      console.log(isInteractive ? bold(header) : header);
+      console.log("─".repeat(header.length));
+
+      for (let i = 0; i < top.length; i++) {
+        console.log(
+          [
+            hostnames[i].padEnd(maxHostnameLength),
+            avg[i].padEnd(maxAvgLength),
+            speeds[i].padEnd(maxSpeedLength),
+            countries[i].padEnd(maxCountryLength),
+            cities[i].padEnd(maxCityLength),
+            provider[i].padEnd(maxProviderLength),
+            ownership[i].padEnd(maxOwnershipLength),
+          ].join("   "),
+        );
+      }
+    } else {
+      error("No servers found");
+    }
   }
 }

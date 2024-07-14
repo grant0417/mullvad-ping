@@ -55,6 +55,7 @@ const args = parseArgs(Deno.args, {
   "--": false,
   string: [
     "country",
+    "city",
     "type",
     "interval",
     "count",
@@ -75,6 +76,7 @@ const args = parseArgs(Deno.args, {
   ],
   alias: {
     c: "country",
+    x: "city",
     l: "list",
     t: "type",
     C: "count",
@@ -112,6 +114,7 @@ ${green(bold("Usage:"))} ${cyan(bold(CLI_NAME))} ${cyan("[OPTIONS]")}
 
 ${green(bold("Options:"))}
   -c, --country <CODE>      the country you want to query (eg. us, gb, de)
+  -x,                       city code (nyc, qas, uyk,)
   -l, --list                lists the available servers
       --list-countries      lists the available countries
       --list-providers      lists the available providers
@@ -143,6 +146,7 @@ const isInteractive = Deno.stdout.isTerminal() && Deno.stdin.isTerminal() &&
   !args.json;
 
 const country = args.country?.toLowerCase();
+const city = args.city.toLowerCase();
 const serverType = args.type.toLowerCase();
 if (!serverTypes.includes(serverType)) {
   error(`Invalid type, allowed types are: ${serverTypes.join(", ")}`);
@@ -223,6 +227,7 @@ const json: Array<ServerData> = await response.json();
 
 const servers = json.filter((server) =>
   (country === undefined || country === server.country_code) &&
+  (city === undefined || city === server.city_code) &&
   (server.network_port_speed >= portSpeed) &&
   checkRunMode(server.stboot, runMode) &&
   (provider === undefined || provider === server.provider) &&

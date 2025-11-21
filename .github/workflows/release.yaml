@@ -15,18 +15,15 @@ jobs:
         with:
           deno-version: v2.x
       - name: Compile Linux
-        run: deno compile --allow-net=api.mullvad.net,deno.land --allow-run=ping --target x86_64-unknown-linux-gnu -o mullvad-ping-linux script.ts
+        run: deno compile --allow-net=api.mullvad.net,jsr.io --allow-run=ping --target x86_64-unknown-linux-gnu -o mullvad-ping-linux script.ts
       - name: Compile Windows
-        run: deno compile --allow-net=api.mullvad.net,deno.land --allow-run=ping --target x86_64-pc-windows-msvc -o mullvad-ping-windows.exe script.ts
-      - name: Compile Apple Intel
-        run: deno compile --allow-net=api.mullvad.net,deno.land --allow-run=ping --target x86_64-apple-darwin -o mullvad-ping-macos-intel script.ts
+        run: deno compile --allow-net=api.mullvad.net,jsr.io --allow-run=ping --target x86_64-pc-windows-msvc -o mullvad-ping-windows.exe script.ts
       - name: Compile Apple Arm
-        run: deno compile --allow-net=api.mullvad.net,deno.land --allow-run=ping --target aarch64-apple-darwin -o mullvad-ping-macos-arm script.ts
+        run: deno compile --allow-net=api.mullvad.net,jsr.io --allow-run=ping --target aarch64-apple-darwin -o mullvad-ping-macos-arm script.ts
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
             mullvad-ping-linux
             mullvad-ping-windows.exe
-            mullvad-ping-macos-intel
             mullvad-ping-macos-arm

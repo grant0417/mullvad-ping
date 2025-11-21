@@ -10,10 +10,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v4
-      - uses: denoland/setup-deno@v1
+        uses: actions/checkout@v6
+      - uses: denoland/setup-deno@v2
         with:
-          deno-version: v1.x
+          deno-version: v2.x
       - name: Compile Linux
         run: deno compile --allow-net=api.mullvad.net,deno.land --allow-run=ping --target x86_64-unknown-linux-gnu -o mullvad-ping-linux script.ts
       - name: Compile Windows

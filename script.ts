@@ -1,10 +1,6 @@
-import { parseArgs, Spinner } from "https://deno.land/std@0.221.0/cli/mod.ts";
-import {
-  bold,
-  cyan,
-  green,
-  red,
-} from "https://deno.land/std@0.221.0/fmt/colors.ts";
+import { parseArgs } from "jsr:@std/cli@1.0.24/parse-args";
+import { bold, cyan, green, red } from "jsr:@std/fmt@1.0.8/colors";
+import { Spinner } from "jsr:@std/cli@1.0.24/unstable-spinner";
 
 const CLI_NAME = "mullvad-ping";
 const VERSION = "v0.9.0";

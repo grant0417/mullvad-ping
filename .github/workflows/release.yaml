@@ -9,7 +9,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - name: Git Checkout 
+      - name: Git Checkout
         uses: actions/checkout@v4
       - uses: denoland/setup-deno@v1
         with:

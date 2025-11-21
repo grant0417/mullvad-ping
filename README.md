@@ -27,8 +27,10 @@ Usage: mullvad-ping [OPTIONS]
 
 Options:
   -c, --country <CODE>      the country you want to query (eg. us, gb, de)
+      --city-code <CODE>    the city code you want to query (eg. nyc, lon)
   -l, --list                lists the available servers
       --list-countries      lists the available countries
+      --list-cities         lists the available cities
       --list-providers      lists the available providers
   -t, --type <TYPE>         the type of server to query (openvpn, bridge, wireguard, all)
   -C, --count <COUNT>       the number of pings to the server (default 5)

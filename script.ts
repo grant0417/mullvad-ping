@@ -7,7 +7,7 @@ import {
 } from "https://deno.land/std@0.221.0/fmt/colors.ts";
 
 const CLI_NAME = "mullvad-ping";
-const VERSION = "v0.8.0";
+const VERSION = "v0.9.0";
 
 type ServerData = {
   hostname: string;
@@ -55,6 +55,7 @@ const args = parseArgs(Deno.args, {
   "--": false,
   string: [
     "country",
+    "city-code",
     "type",
     "interval",
     "count",
@@ -68,6 +69,7 @@ const args = parseArgs(Deno.args, {
     "help",
     "list",
     "list-countries",
+    "list-cities",
     "list-providers",
     "include-inactive",
     "json",
@@ -92,7 +94,7 @@ const args = parseArgs(Deno.args, {
     "port-speed": `${PORT_SPEED_DEFAULT}`,
     "run-mode": RUN_MODE_DEFAULT,
     owner: OWNER_DEFAULT,
-    "type": TYPE_DEFAULT,
+    type: TYPE_DEFAULT,
   },
   unknown: (arg) => {
     error(`Unknown argument ${arg}`);
@@ -112,8 +114,10 @@ ${green(bold("Usage:"))} ${cyan(bold(CLI_NAME))} ${cyan("[OPTIONS]")}
 
 ${green(bold("Options:"))}
   -c, --country <CODE>      the country you want to query (eg. us, gb, de)
+      --city-code <CODE>    the city code you want to query (eg. nyc, lon)
   -l, --list                lists the available servers
       --list-countries      lists the available countries
+      --list-cities         lists the available cities
       --list-providers      lists the available providers
   -t, --type <TYPE>         the type of server to query (${serverTypesStr})
   -C, --count <COUNT>       the number of pings to the server (default ${COUNT_DEFAULT})
@@ -143,6 +147,7 @@ const isInteractive = Deno.stdout.isTerminal() && Deno.stdin.isTerminal() &&
   !args.json;
 
 const country = args.country?.toLowerCase();
+const cityCode = args["city-code"]?.toLowerCase();
 const serverType = args.type.toLowerCase();
 if (!serverTypes.includes(serverType)) {
   error(`Invalid type, allowed types are: ${serverTypes.join(", ")}`);
@@ -163,16 +168,20 @@ if (!ownerTypes.includes(owned)) {
 
 const runMode = args["run-mode"].toLowerCase();
 if (!runTypes.includes(runMode)) {
-  error(
-    `Invalid run-mode, allowed types are: ${runTypes.join(", ")}`,
-  );
+  error(`Invalid run-mode, allowed types are: ${runTypes.join(", ")}`);
 }
 
-// ensure that no more than 1 of list, list-countries, list-providers is set
-const listCount = [args.list, args["list-countries"], args["list-providers"]]
-  .filter((e) => e).length;
+// ensure that no more than 1 of list, list-countries, list-cities, list-providers is set
+const listCount = [
+  args.list,
+  args["list-countries"],
+  args["list-cities"],
+  args["list-providers"],
+].filter((e) => e).length;
 if (listCount > 1) {
-  error("Only one of list, list-countries, list-providers can be set");
+  error(
+    "Only one of list, list-countries, list-cities, list-providers can be set",
+  );
 }
 
 const provider = args.provider;
@@ -221,13 +230,15 @@ function checkOwnership(owned: string, server: ServerData) {
 
 const json: Array<ServerData> = await response.json();
 
-const servers = json.filter((server) =>
-  (country === undefined || country === server.country_code) &&
-  (server.network_port_speed >= portSpeed) &&
-  checkRunMode(server.stboot, runMode) &&
-  (provider === undefined || provider === server.provider) &&
-  checkOwnership(owned, server) &&
-  (args["include-inactive"] || server.active)
+const servers = json.filter(
+  (server) =>
+    (country === undefined || country === server.country_code) &&
+    (cityCode === undefined || cityCode === server.city_code) &&
+    server.network_port_speed >= portSpeed &&
+    checkRunMode(server.stboot, runMode) &&
+    (provider === undefined || provider === server.provider) &&
+    checkOwnership(owned, server) &&
+    (args["include-inactive"] || server.active),
 );
 
 if (args["list-countries"]) {
@@ -245,6 +256,23 @@ if (args["list-countries"]) {
     );
     for (const country of sortedCountries) {
       console.log(`${country[0]}: ${country[1]}`);
+    }
+  }
+} else if (args["list-cities"]) {
+  const cities = new Map<string, string>();
+  json.forEach((server) => {
+    cities.set(server.city_code, server.city_name);
+  });
+
+  if (args.json) {
+    console.log(JSON.stringify(Object.fromEntries(cities), null, 2));
+  } else {
+    // sort by city code
+    const sortedCities = Array.from(cities).sort((a, b) =>
+      a[0].localeCompare(b[0])
+    );
+    for (const city of sortedCities) {
+      console.log(`${city[0]}: ${city[1]}`);
     }
   }
 } else if (args["list-providers"]) {
@@ -286,13 +314,10 @@ if (args["list-countries"]) {
       ];
     }
 
-    const p = new Deno.Command(
-      "ping",
-      {
-        args: pingArgs,
-        stdout: "piped",
-      },
-    );
+    const p = new Deno.Command("ping", {
+      args: pingArgs,
+      stdout: "piped",
+    });
 
     let pingSpinner: Spinner | undefined;
     if (isInteractive) {
@@ -381,10 +406,7 @@ if (args["list-countries"]) {
       );
 
       const avg = top.map((e) => `${e.avg.toFixed(1)}ms`);
-      const maxAvgLength = Math.max(
-        "Avg".length,
-        ...avg.map((e) => e.length),
-      );
+      const maxAvgLength = Math.max("Avg".length, ...avg.map((e) => e.length));
 
       const speeds = top.map((e) => `${e.network_port_speed} Gbps`);
       const maxSpeedLength = Math.max(

@@ -3,7 +3,7 @@ import { bold, cyan, green, red } from "jsr:@std/fmt@1.0.8/colors";
 import { Spinner } from "jsr:@std/cli@1.0.24/unstable-spinner";
 
 const CLI_NAME = "mullvad-ping";
-const VERSION = "v0.9.0";
+const VERSION = "v0.9.1";
 
 type ServerData = {
   hostname: string;

@@ -11,7 +11,7 @@ Gets the list of Mullvad servers with the best latency according to `ping`.
 2. Run the following command
 
 ```shell
-deno run --allow-net=api.mullvad.net,jsr.io --allow-run=ping https://raw.githubusercontent.com/grant0417/mullvad-ping/v0.9.3/script.ts
+deno run --allow-net=api.mullvad.net,jsr.io --allow-run=ping jsr:@grant0417/mullvad-ping@0.9.5
 ```
 
 3. Alternatively, you can download a compiled release from the

@@ -8,6 +8,9 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # The OIDC ID token is used for authentication with JSR.
     steps:
       - name: Git Checkout
         uses: actions/checkout@v6
@@ -27,3 +30,4 @@ jobs:
             mullvad-ping-linux
             mullvad-ping-windows.exe
             mullvad-ping-macos-arm
+      - run: npx jsr publish

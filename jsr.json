@@ -1,0 +1,6 @@
+{
+  "name": "@grant0417/mullvad-ping",
+  "version": "0.9.3",
+  "license": "MIT",
+  "exports": "./script.ts"
+}

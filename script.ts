@@ -127,7 +127,7 @@ ${green(bold("Options:"))}
   -h, --help                display this help and exit
   -V, --version             display version information and exit`
       .replace(/(--?[a-zA-Z-]+)/g, cyan(bold("$1")))
-      .replace(/(<[^>]+>)/g, cyan("$1"))
+      .replace(/(<[^>]+>)/g, cyan("$1")),
   );
 
   Deno.exit(0);
@@ -139,8 +139,8 @@ if (args.version) {
 }
 
 // Color output only if the input and output are terminals and not JSON
-const isInteractive =
-  Deno.stdout.isTerminal() && Deno.stdin.isTerminal() && !args.json;
+const isInteractive = Deno.stdout.isTerminal() && Deno.stdin.isTerminal() &&
+  !args.json;
 
 const country = args.country?.toLowerCase();
 const cityCode = args["city-code"]?.toLowerCase();
@@ -176,7 +176,7 @@ const listCount = [
 ].filter((e) => e).length;
 if (listCount > 1) {
   error(
-    "Only one of list, list-countries, list-cities, list-providers can be set"
+    "Only one of list, list-countries, list-cities, list-providers can be set",
   );
 }
 
@@ -192,7 +192,7 @@ if (isInteractive) {
 }
 
 const response = await fetch(
-  `https://api.mullvad.net/www/relays/${serverType}/`
+  `https://api.mullvad.net/www/relays/${serverType}/`,
 );
 
 if (fetchingSpinner) {
@@ -234,7 +234,7 @@ const servers = json.filter(
     checkRunMode(server.stboot, runMode) &&
     (provider === undefined || provider === server.provider) &&
     checkOwnership(owned, server) &&
-    (args["include-inactive"] || server.active)
+    (args["include-inactive"] || server.active),
 );
 
 if (args["list-countries"]) {
@@ -290,7 +290,7 @@ if (args["list-countries"]) {
   } else {
     for (const server of servers) {
       console.log(
-        `${server.hostname}.mullvad.net, ${server.city_name}, ${server.country_name} (${server.network_port_speed} Gigabit ${server.type})`
+        `${server.hostname}.mullvad.net, ${server.city_name}, ${server.country_name} (${server.network_port_speed} Gigabit ${server.type})`,
       );
     }
   }
@@ -341,7 +341,7 @@ if (args["list-countries"]) {
           if (!args.json) {
             console.log(
               isInteractive ? green("✓") : "",
-              `${server.hostname}, avg ${avg[1]}ms`
+              `${server.hostname}, avg ${avg[1]}ms`,
             );
           }
 
@@ -360,7 +360,7 @@ if (args["list-countries"]) {
           if (!args.json) {
             console.log(
               isInteractive ? green("✓") : "",
-              `${server.hostname}, min/avg/max/mdev ${values[0]}`
+              `${server.hostname}, min/avg/max/mdev ${values[0]}`,
             );
           }
 
@@ -377,7 +377,7 @@ if (args["list-countries"]) {
       if (!args.json) {
         console.log(
           isInteractive ? red("✗") : "",
-          `${server.hostname} (${server.ipv4_addr_in}), failed to ping`
+          `${server.hostname} (${server.ipv4_addr_in}), failed to ping`,
         );
       }
     }
@@ -398,7 +398,7 @@ if (args["list-countries"]) {
       const hostnames = top.map((e) => e.hostname);
       const maxHostnameLength = Math.max(
         "Hostname".length,
-        ...hostnames.map((e) => e.length)
+        ...hostnames.map((e) => e.length),
       );
 
       const avg = top.map((e) => `${e.avg.toFixed(1)}ms`);
@@ -407,33 +407,31 @@ if (args["list-countries"]) {
       const speeds = top.map((e) => `${e.network_port_speed} Gbps`);
       const maxSpeedLength = Math.max(
         "Speed".length,
-        ...speeds.map((e) => e.length)
+        ...speeds.map((e) => e.length),
       );
 
       const countries = top.map((e) => e.country_name);
       const maxCountryLength = Math.max(
         "Country".length,
-        ...countries.map((e) => e.length)
+        ...countries.map((e) => e.length),
       );
 
       const cities = top.map((e) => e.city_name);
       const maxCityLength = Math.max(
         "City".length,
-        ...cities.map((e) => e.length)
+        ...cities.map((e) => e.length),
       );
 
       const provider = top.map((e) => e.provider);
       const maxProviderLength = Math.max(
         "Provider".length,
-        ...provider.map((e) => e.length)
+        ...provider.map((e) => e.length),
       );
 
-      const ownership = top.map((e) =>
-        e.owned ? "Owned by Mullvad" : "Rented"
-      );
+      const ownership = top.map((e) => e.owned ? "Owned by Mullvad" : "Rented");
       const maxOwnershipLength = Math.max(
         "Ownership".length,
-        ...ownership.map((e) => e.length)
+        ...ownership.map((e) => e.length),
       );
 
       const header = [
@@ -459,7 +457,7 @@ if (args["list-countries"]) {
             cities[i].padEnd(maxCityLength),
             provider[i].padEnd(maxProviderLength),
             ownership[i].padEnd(maxOwnershipLength),
-          ].join("   ")
+          ].join("   "),
         );
       }
     } else {
